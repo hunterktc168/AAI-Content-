@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   AUDIENCES,
@@ -198,6 +198,9 @@ export async function POST(req: NextRequest) {
         responseMimeType: 'application/json',
         responseSchema: transformResponseSchema,
         temperature: PRESET_TEMPERATURES[presetId],
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.MEDIUM,
+        },
       },
     });
 

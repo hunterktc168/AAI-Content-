@@ -3,10 +3,12 @@
 import { useMemo, useState } from 'react';
 import DiffMatchPatch from 'diff-match-patch';
 import type { ChangeItem, TransformResponse } from '@/lib/types';
+import { THEMES, type ThemeConfig } from '@/lib/theme';
 
 interface DiffViewerProps {
   source: string;
   result: TransformResponse;
+  theme?: ThemeConfig;
 }
 
 type DiffTuple = [number, string];
@@ -123,7 +125,7 @@ function findBestMatchInText(
     return { start: ciIdx, end: ciIdx + needle.length, kind: 'nearest' };
   }
 
-  // 3. Bitap fuzzy match via diff-match-patch (probe start and tail 32-char chunks for longer excerpts)
+  // 3. Bitap fuzzy match via diff-match-patch
   const dmp = new DiffMatchPatch();
   dmp.Match_Threshold = 0.45;
   dmp.Match_Distance = Math.max(1000, haystack.length * 4);
@@ -156,7 +158,7 @@ function findBestMatchInText(
     }
   }
 
-  // 4. Word-overlap sliding window fallback for paraphrased/non-exact excerpts
+  // 4. Word-overlap sliding window fallback
   const wordSplitRegex = /[\s.,;:!?'"()[\]{}<>«»“”‘’—–/\\|]+/;
   const needleWords = lowerNeedle
     .split(wordSplitRegex)
@@ -223,7 +225,8 @@ function renderSegmentWithHighlight(
   streamOffset: number,
   highlightRange: { start: number; end: number } | null,
   baseClassName: string,
-  keyPrefix: string
+  keyPrefix: string,
+  isDark: boolean
 ) {
   if (!highlightRange) {
     return (
@@ -252,10 +255,14 @@ function renderSegmentWithHighlight(
   const matched = text.slice(localStart, localEnd);
   const after = text.slice(localEnd);
 
+  const markClass = isDark
+    ? 'bg-amber-400/30 text-amber-200 ring-1 ring-amber-400/80 rounded-xs px-0.5'
+    : 'bg-amber-200 text-amber-950 ring-1 ring-amber-500/80 rounded-xs px-0.5';
+
   return (
     <span key={keyPrefix} className={baseClassName || undefined}>
       {before}
-      <mark className="bg-amber-200/90 text-zinc-950 ring-1 ring-amber-500 rounded-xs">
+      <mark className={markClass}>
         {matched}
       </mark>
       {after}
@@ -265,23 +272,27 @@ function renderSegmentWithHighlight(
 
 const CHANGE_BADGE_STYLES: Record<
   ChangeItem['type'],
-  { label: string; className: string }
+  { label: string; darkClass: string; lightClass: string }
 > = {
   add: {
     label: 'Added',
-    className: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+    darkClass: 'text-emerald-400',
+    lightClass: 'text-emerald-700',
   },
   remove: {
     label: 'Removed',
-    className: 'bg-rose-50 text-rose-800 border border-rose-200',
+    darkClass: 'text-rose-400',
+    lightClass: 'text-rose-700',
   },
   rewrite: {
     label: 'Rewritten',
-    className: 'bg-blue-50 text-blue-800 border border-blue-200',
+    darkClass: 'text-cyan-400',
+    lightClass: 'text-[#0D5C63]',
   },
 };
 
-export default function DiffViewer({ source, result }: DiffViewerProps) {
+export default function DiffViewer({ source, result, theme }: DiffViewerProps) {
+  const activeTheme = theme ?? THEMES.obsidian;
   const { transformedText, changeLog } = result;
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
@@ -314,29 +325,43 @@ export default function DiffViewer({ source, result }: DiffViewerProps) {
   return (
     <div className="flex flex-col gap-5">
       {/* Diff summary legend */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-3 text-xs text-zinc-600">
+      <div
+        className={`flex flex-wrap items-center justify-between gap-3 border-b pb-3 text-xs ${activeTheme.border} ${activeTheme.inkMuted}`}
+      >
         <div className="flex flex-wrap items-center gap-4">
           <span className="inline-flex items-center gap-1.5">
             <span
-              className="inline-block h-2.5 w-2.5 rounded-xs bg-emerald-200 border border-emerald-400"
+              className={`inline-block h-2.5 w-2.5 rounded-xs ${
+                activeTheme.isDark
+                  ? 'bg-emerald-500/30 border border-emerald-500'
+                  : 'bg-emerald-200 border border-emerald-600'
+              }`}
               aria-hidden="true"
             />
-            <span>Additions</span>
+            <span className={activeTheme.ink}>Additions</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span
-              className="inline-block h-2.5 w-2.5 rounded-xs bg-rose-200 border border-rose-400"
+              className={`inline-block h-2.5 w-2.5 rounded-xs ${
+                activeTheme.isDark
+                  ? 'bg-rose-500/30 border border-rose-500'
+                  : 'bg-rose-200 border border-rose-600'
+              }`}
               aria-hidden="true"
             />
-            <span>Removals</span>
+            <span className={activeTheme.ink}>Removals</span>
           </span>
           {activeMatch ? (
-            <span className="inline-flex items-center gap-1.5 text-amber-800">
+            <span
+              className={`inline-flex items-center gap-1.5 ${
+                activeTheme.isDark ? 'text-amber-300' : 'text-amber-800'
+              }`}
+            >
               <span
-                className="inline-block h-2.5 w-2.5 rounded-xs bg-amber-200 border border-amber-500"
+                className="inline-block h-2.5 w-2.5 rounded-xs bg-amber-400 border border-amber-600"
                 aria-hidden="true"
               />
-              <span>
+              <span className="font-medium">
                 {activeMatch.kind === 'exact'
                   ? 'Exact excerpt match'
                   : 'Nearest substring match'}
@@ -344,16 +369,32 @@ export default function DiffViewer({ source, result }: DiffViewerProps) {
             </span>
           ) : null}
         </div>
-        <div className="font-mono tabular-nums flex items-center gap-3 text-zinc-500">
-          <span className="text-emerald-700">+{stats.additions} words</span>
-          <span aria-hidden="true">·</span>
-          <span className="text-rose-700">-{stats.removals} words</span>
+        <div className="font-mono tabular-nums flex items-center gap-3">
+          <span
+            className={
+              activeTheme.isDark ? 'text-emerald-400' : 'text-emerald-700 font-semibold'
+            }
+          >
+            +{stats.additions} words
+          </span>
+          <span aria-hidden="true" className={activeTheme.inkSubtle}>
+            ·
+          </span>
+          <span
+            className={
+              activeTheme.isDark ? 'text-rose-400' : 'text-rose-700 font-semibold'
+            }
+          >
+            -{stats.removals} words
+          </span>
         </div>
       </div>
 
-      {/* Split view: Inline word diff + ChangeLog rationale cards */}
+      {/* Split view: Inline word diff + ChangeLog rationale entries */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.35fr_1fr] gap-5 items-start">
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4 text-[15px] leading-relaxed text-zinc-800 whitespace-pre-wrap break-words">
+        <div
+          className={`rounded-xl border p-4 text-[15px] leading-[1.7] whitespace-pre-wrap break-words ${activeTheme.border} ${activeTheme.tray} ${activeTheme.ink}`}
+        >
           {positionedDiffs.map(({ op, text, sourceStart, targetStart }, index) => {
             let highlightRange: { start: number; end: number } | null = null;
             let offsetForSegment = 0;
@@ -371,7 +412,8 @@ export default function DiffViewer({ source, result }: DiffViewerProps) {
                 offsetForSegment,
                 highlightRange,
                 '',
-                `eq-${index}`
+                `eq-${index}`,
+                activeTheme.isDark
               );
             }
 
@@ -380,12 +422,17 @@ export default function DiffViewer({ source, result }: DiffViewerProps) {
                 offsetForSegment = targetStart;
                 highlightRange = activeMatch;
               }
+              const addClass = activeTheme.isDark
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xs px-0.5'
+                : 'bg-emerald-100 text-emerald-950 border border-emerald-300 rounded-xs px-0.5';
+
               return renderSegmentWithHighlight(
                 text,
                 offsetForSegment,
                 highlightRange,
-                'bg-emerald-100 text-emerald-950 rounded-xs px-0.5',
-                `add-${index}`
+                addClass,
+                `add-${index}`,
+                activeTheme.isDark
               );
             }
 
@@ -393,26 +440,33 @@ export default function DiffViewer({ source, result }: DiffViewerProps) {
               offsetForSegment = sourceStart;
               highlightRange = activeMatch;
             }
+            const delClass = activeTheme.isDark
+              ? 'bg-rose-500/20 text-rose-300 line-through decoration-rose-500/70 border border-rose-500/30 rounded-xs px-0.5'
+              : 'bg-rose-100 text-rose-900 line-through decoration-rose-500/70 border border-rose-300 rounded-xs px-0.5';
+
             return renderSegmentWithHighlight(
               text,
               offsetForSegment,
               highlightRange,
-              'bg-rose-100 text-rose-900 line-through decoration-rose-500/70 rounded-xs px-0.5',
-              `del-${index}`
+              delClass,
+              `del-${index}`,
+              activeTheme.isDark
             );
           })}
         </div>
 
         <aside aria-label="Change rationale log" className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <h3 className={`text-xs font-semibold ${activeTheme.ink}`}>
               Editorial Change Log ({changeLog.length})
             </h3>
             {selectedIndex !== null ? (
               <button
                 type="button"
                 onClick={() => setSelectedIndex(null)}
-                className="text-xs font-medium text-blue-700 hover:underline cursor-pointer"
+                className={`text-xs font-medium cursor-pointer hover:underline underline-offset-4 ${
+                  activeTheme.isDark ? 'text-cyan-400' : 'text-[#0D5C63]'
+                }`}
               >
                 Clear highlight
               </button>
@@ -420,16 +474,21 @@ export default function DiffViewer({ source, result }: DiffViewerProps) {
           </div>
 
           {changeLog.length === 0 ? (
-            <p className="rounded-lg border border-zinc-200 bg-white p-3.5 text-sm text-zinc-500">
+            <p
+              className={`rounded-xl border p-3.5 text-sm ${activeTheme.border} ${activeTheme.panel} ${activeTheme.inkMuted}`}
+            >
               No structural rationale entries were returned for this revision.
             </p>
           ) : (
-            <ul className="flex flex-col gap-2.5">
+            <ul className="flex flex-col gap-2">
               {changeLog.map((item, idx) => {
                 const badge =
                   CHANGE_BADGE_STYLES[item.type] ?? CHANGE_BADGE_STYLES.rewrite;
                 const match = resolvedMatches[idx];
                 const isSelected = selectedIndex === idx;
+                const badgeColor = activeTheme.isDark
+                  ? badge.darkClass
+                  : badge.lightClass;
 
                 return (
                   <li key={idx}>
@@ -439,19 +498,23 @@ export default function DiffViewer({ source, result }: DiffViewerProps) {
                       onClick={() =>
                         setSelectedIndex((prev) => (prev === idx ? null : idx))
                       }
-                      className={`w-full text-left rounded-lg border p-3.5 flex flex-col gap-2 transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                      className={`w-full text-left rounded-xl border p-3.5 flex flex-col gap-1.5 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 ${
+                        activeTheme.accentRing
+                      } ${
                         isSelected
-                          ? 'border-amber-400 bg-amber-50/50'
-                          : 'border-zinc-200 bg-white hover:border-zinc-300'
+                          ? `${activeTheme.border} ${
+                              activeTheme.isDark
+                                ? 'bg-cyan-500/10 ring-1 ring-cyan-500/50'
+                                : 'bg-[#EAF3F4] ring-1 ring-[#0D5C63]'
+                            }`
+                          : `${activeTheme.border} ${activeTheme.panel} hover:border-slate-500/40`
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium uppercase tracking-wide ${badge.className}`}
-                        >
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className={`font-semibold ${badgeColor}`}>
                           {badge.label}
                         </span>
-                        <span className="text-[11px] text-zinc-500">
+                        <span className={`text-[11px] ${activeTheme.inkSubtle}`}>
                           {match
                             ? match.kind === 'exact'
                               ? 'Click to highlight'
@@ -459,11 +522,13 @@ export default function DiffViewer({ source, result }: DiffViewerProps) {
                             : 'Summary hint'}
                         </span>
                       </div>
-                      <p className="text-sm text-zinc-800 leading-snug">
+                      <p className={`text-sm leading-snug ${activeTheme.ink}`}>
                         {item.rationale}
                       </p>
                       {item.excerpt?.trim() ? (
-                        <p className="text-xs text-zinc-500 italic line-clamp-2 border-t border-zinc-100 pt-2">
+                        <p
+                          className={`text-xs italic line-clamp-2 border-t pt-2 mt-0.5 ${activeTheme.border} ${activeTheme.inkSubtle}`}
+                        >
                           &ldquo;{item.excerpt.trim()}&rdquo;
                         </p>
                       ) : null}

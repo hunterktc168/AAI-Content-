@@ -52,29 +52,29 @@ export default function ToastBanner({ toast, onDismiss }: ToastBannerProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.15 }}
-            className={`pointer-events-auto flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-xs shadow-sm ${
+            className={`pointer-events-auto flex items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-xs shadow-md ${
               toast.variant === 'error'
-                ? 'border-rose-200 bg-rose-50 text-rose-900'
-                : 'border-emerald-200 bg-white text-zinc-900'
+                ? 'border-rose-200 bg-rose-50 text-rose-950'
+                : 'border-[#DFE2DC] bg-white text-[#141715]'
             }`}
           >
             {toast.variant === 'error' ? (
               <AlertCircle
-                className="h-4 w-4 shrink-0 text-rose-600 mt-0.5"
+                className="h-4 w-4 shrink-0 text-rose-700 mt-0.5"
                 aria-hidden="true"
               />
             ) : (
               <CheckCircle2
-                className="h-4 w-4 shrink-0 text-emerald-600 mt-0.5"
+                className="h-4 w-4 shrink-0 text-[#0D5C63] mt-0.5"
                 aria-hidden="true"
               />
             )}
-            <span className="flex-1 leading-snug">{toast.message}</span>
+            <span className="flex-1 leading-snug font-medium">{toast.message}</span>
             <button
               type="button"
               aria-label="Dismiss notification"
               onClick={onDismiss}
-              className="shrink-0 rounded p-0.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 cursor-pointer"
+              className="shrink-0 rounded p-0.5 text-[#646D66] hover:bg-[#ECEEE9] hover:text-[#141715] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0D5C63] cursor-pointer"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>

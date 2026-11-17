@@ -38,4 +38,7 @@ export interface PresetMeta {
   label: string;
   description: string;
   icon: string; // lucide-react icon name, e.g. 'Sparkles'
+  tagline?: string;
+  badgeColor?: string;
+  themeGlow?: string;
 }

@@ -2,11 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  ArrowRight,
+  Award,
+  Briefcase,
+  Cpu,
   FileText,
   GraduationCap,
+  HeartHandshake,
+  Layers,
   Loader2,
+  Scale,
+  Sliders,
   SlidersHorizontal,
   Sparkles,
+  Users,
   X,
   Zap,
   type LucideIcon,
@@ -14,6 +23,8 @@ import {
 import { AUDIENCES, DEPTHS, TONES } from '@/lib/constants';
 import { PRESETS_META } from '@/lib/presets.meta';
 import type { Audience, Depth, PresetId, Tone } from '@/lib/types';
+import type { ThemeConfig } from '@/lib/theme';
+import CustomDropdown, { type DropdownOption } from './CustomDropdown';
 
 const PRESET_ICON_MAP: Record<string, LucideIcon> = {
   Sparkles,
@@ -22,24 +33,48 @@ const PRESET_ICON_MAP: Record<string, LucideIcon> = {
   FileText,
 };
 
-const TONE_LABELS: Record<Tone, string> = {
-  neutral: 'Neutral',
-  warm: 'Warm',
-  authoritative: 'Authoritative',
-  playful: 'Playful',
+const TONE_META: Record<Tone, { label: string; icon: LucideIcon }> = {
+  neutral: { label: 'Neutral', icon: Scale },
+  warm: { label: 'Warm', icon: HeartHandshake },
+  authoritative: { label: 'Authoritative', icon: Award },
+  playful: { label: 'Playful', icon: Sparkles },
 };
 
-const AUDIENCE_LABELS: Record<Audience, string> = {
-  general: 'General',
-  executive: 'Executive',
-  specialist: 'Specialist',
-  student: 'Student',
-};
+const AUDIENCE_OPTIONS: DropdownOption<Audience>[] = [
+  {
+    value: 'general',
+    label: 'General Audience',
+    tagline: 'Universal accessibility & direct clarity',
+    icon: Users,
+    themeGlow: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400',
+  },
+  {
+    value: 'executive',
+    label: 'Executive Leadership',
+    tagline: 'High-signal briefings & strategic takeaways',
+    icon: Briefcase,
+    themeGlow: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+  },
+  {
+    value: 'specialist',
+    label: 'Technical Specialist',
+    tagline: 'Domain rigour, exact terminology & data',
+    icon: Cpu,
+    themeGlow: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
+  },
+  {
+    value: 'student',
+    label: 'Student / Learner',
+    tagline: 'Step-by-step scaffolding & clear analogies',
+    icon: GraduationCap,
+    themeGlow: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
+  },
+];
 
-const DEPTH_META: Record<Depth, { label: string; hint: string }> = {
-  quick: { label: 'Quick', hint: '≤40%' },
-  standard: { label: 'Standard', hint: '80–120%' },
-  deep: { label: 'Deep', hint: '130–160%' },
+const DEPTH_META: Record<Depth, { label: string; hint: string; icon: LucideIcon }> = {
+  quick: { label: 'Quick', hint: '≤40%', icon: Zap },
+  standard: { label: 'Standard', hint: '80–120%', icon: Sliders },
+  deep: { label: 'Deep', hint: '130–160%', icon: Layers },
 };
 
 export interface ControlPanelProps {
@@ -54,6 +89,7 @@ export interface ControlPanelProps {
   onTransform: () => void;
   isTransforming: boolean;
   isSourceEmpty: boolean;
+  theme: ThemeConfig;
 }
 
 interface SelectorFieldsProps {
@@ -66,6 +102,7 @@ interface SelectorFieldsProps {
   onAudienceChange: (audience: Audience) => void;
   depth: Depth;
   onDepthChange: (depth: Depth) => void;
+  theme: ThemeConfig;
 }
 
 function SelectorFields({
@@ -78,132 +115,119 @@ function SelectorFields({
   onAudienceChange,
   depth,
   onDepthChange,
+  theme,
 }: SelectorFieldsProps) {
-  const activePreset =
-    PRESETS_META.find((preset) => preset.id === presetId) ?? PRESETS_META[0];
-  const ActivePresetIcon = PRESET_ICON_MAP[activePreset.icon] ?? Sparkles;
+  // Map presets meta to DropdownOptions
+  const presetDropdownOptions: DropdownOption<PresetId>[] = PRESETS_META.map(
+    (meta) => ({
+      value: meta.id,
+      label: meta.label,
+      tagline: meta.tagline,
+      description: meta.description,
+      icon: PRESET_ICON_MAP[meta.icon] ?? Sparkles,
+      themeGlow: meta.themeGlow,
+    })
+  );
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Preset Dropdown */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor={`${idPrefix}-preset-select`}
-          className="text-xs font-semibold text-zinc-700"
-        >
-          Style Preset
-        </label>
-        <div className="relative">
-          <select
-            id={`${idPrefix}-preset-select`}
-            value={presetId}
-            onChange={(e) => onPresetChange(e.target.value as PresetId)}
-            className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 cursor-pointer"
-          >
-            {PRESETS_META.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-start gap-2 pt-1 text-xs text-zinc-500 leading-snug">
-          <ActivePresetIcon
-            className="h-3.5 w-3.5 shrink-0 text-blue-700 mt-0.5"
-            aria-hidden="true"
-          />
-          <span>{activePreset.description}</span>
-        </div>
-      </div>
+    <div className="flex flex-col gap-5">
+      {/* Dynamic Style Preset Custom Dropdown */}
+      <CustomDropdown<PresetId>
+        id={`${idPrefix}-preset-dropdown`}
+        label="Transformation Preset"
+        options={presetDropdownOptions}
+        value={presetId}
+        onChange={onPresetChange}
+        theme={theme}
+      />
 
-      {/* Tone Selector */}
+      {/* Target Audience Custom Dropdown */}
+      <CustomDropdown<Audience>
+        id={`${idPrefix}-audience-dropdown`}
+        label="Target Audience"
+        options={AUDIENCE_OPTIONS}
+        value={audience}
+        onChange={onAudienceChange}
+        theme={theme}
+      />
+
+      {/* Tone Segmented Tray */}
       <div className="flex flex-col gap-1.5">
         <span
           id={`${idPrefix}-tone-label`}
-          className="text-xs font-semibold text-zinc-700"
+          className={`text-xs font-semibold ${theme.inkMuted}`}
         >
-          Tone
+          Tone Calibration
         </span>
         <div
           role="group"
           aria-labelledby={`${idPrefix}-tone-label`}
-          className="grid grid-cols-2 gap-1.5"
+          className={`grid grid-cols-2 gap-1 rounded-xl p-1 border ${theme.tray} ${theme.border}`}
         >
           {TONES.map((item) => {
             const active = tone === item;
+            const meta = TONE_META[item];
+            const ToneIcon = meta.icon;
             return (
               <button
                 key={item}
                 type="button"
                 aria-pressed={active}
                 onClick={() => onToneChange(item)}
-                className={`rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors duration-150 whitespace-nowrap truncate cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                className={`flex items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 ${
+                  theme.accentRing
+                } ${
                   active
-                    ? 'border-blue-700 bg-blue-50 text-blue-900'
-                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900'
+                    ? `${theme.activeSegmentBg} ${theme.activeSegmentShadow}`
+                    : `${theme.inkMuted} hover:text-white`
                 }`}
               >
-                {TONE_LABELS[item]}
+                <ToneIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{meta.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Target Audience Selector */}
-      <div className="flex flex-col gap-1.5">
-        <label
-          htmlFor={`${idPrefix}-audience-select`}
-          className="text-xs font-semibold text-zinc-700"
-        >
-          Target Audience
-        </label>
-        <select
-          id={`${idPrefix}-audience-select`}
-          value={audience}
-          onChange={(e) => onAudienceChange(e.target.value as Audience)}
-          className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 cursor-pointer"
-        >
-          {AUDIENCES.map((item) => (
-            <option key={item} value={item}>
-              {AUDIENCE_LABELS[item]}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Depth Selector */}
+      {/* Depth Segmented Tray */}
       <div className="flex flex-col gap-1.5">
         <span
           id={`${idPrefix}-depth-label`}
-          className="text-xs font-semibold text-zinc-700"
+          className={`text-xs font-semibold ${theme.inkMuted}`}
         >
-          Depth
+          Output Depth & Length
         </span>
         <div
           role="group"
           aria-labelledby={`${idPrefix}-depth-label`}
-          className="grid grid-cols-3 gap-1.5"
+          className={`grid grid-cols-3 gap-1 rounded-xl p-1 border ${theme.tray} ${theme.border}`}
         >
           {DEPTHS.map((item) => {
             const active = depth === item;
             const meta = DEPTH_META[item];
+            const DepthIcon = meta.icon;
             return (
               <button
                 key={item}
                 type="button"
                 aria-pressed={active}
                 onClick={() => onDepthChange(item)}
-                className={`flex flex-col items-center justify-center rounded-lg border px-2 py-2 text-center transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                className={`flex flex-col items-center justify-center rounded-lg px-1.5 py-1.5 text-center transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 ${
+                  theme.accentRing
+                } ${
                   active
-                    ? 'border-blue-700 bg-blue-50 text-blue-900'
-                    : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900'
+                    ? `${theme.activeSegmentBg} ${theme.activeSegmentShadow}`
+                    : `${theme.inkMuted} hover:text-white`
                 }`}
               >
-                <span className="text-xs font-medium whitespace-nowrap">
-                  {meta.label}
-                </span>
-                <span className="font-mono tabular-nums text-[10px] text-zinc-500">
+                <div className="flex items-center gap-1">
+                  <DepthIcon className="h-3 w-3" aria-hidden="true" />
+                  <span className="text-xs font-bold whitespace-nowrap">
+                    {meta.label}
+                  </span>
+                </div>
+                <span className="font-mono tabular-nums text-[10px] opacity-80">
                   {meta.hint}
                 </span>
               </button>
@@ -215,12 +239,12 @@ function SelectorFields({
       {/* Future-proofing slot for custom style profiles; intentionally disabled until user-defined style presets are supported */}
       <details
         aria-disabled="true"
-        className="rounded-lg border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs text-zinc-500"
+        className={`border-t pt-3 text-xs ${theme.border} ${theme.inkSubtle}`}
       >
-        <summary className="cursor-pointer select-none font-medium text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 rounded">
+        <summary className="cursor-pointer select-none font-medium hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400 rounded">
           Custom Writing Style (Coming Soon)
         </summary>
-        <div className="mt-2.5 pt-2 border-t border-zinc-200">
+        <div className="mt-2.5">
           <label
             htmlFor={`${idPrefix}-custom-style-select`}
             className="sr-only"
@@ -232,7 +256,9 @@ function SelectorFields({
             disabled
             aria-disabled="true"
             defaultValue=""
-            className="w-full rounded-md border border-zinc-200 bg-zinc-100 px-2.5 py-1.5 text-xs text-zinc-400 cursor-not-allowed"
+            className={`w-full rounded-lg border px-2.5 py-1.5 text-xs cursor-not-allowed ${
+              theme.tray
+            } ${theme.border} ${theme.inkSubtle}`}
           >
             <option value="">No custom profiles saved</option>
           </select>
@@ -254,16 +280,23 @@ export function DesktopControlPanel({
   onTransform,
   isTransforming,
   isSourceEmpty,
+  theme,
 }: ControlPanelProps) {
   return (
     <aside
       aria-label="Transformation controls"
-      className="flex flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-4"
+      className={`flex flex-col gap-5 rounded-2xl border p-5 ${theme.panel} ${theme.border}`}
     >
-      <div className="border-b border-zinc-200 pb-3">
-        <h2 className="text-sm font-semibold tracking-tight text-zinc-900">
-          Transform Controls
-        </h2>
+      <div className={`border-b pb-3.5 flex items-center justify-between ${theme.border}`}>
+        <div className="flex items-center gap-2">
+          <Sliders className="h-4 w-4 text-cyan-400" aria-hidden="true" />
+          <h2 className={`text-sm font-bold tracking-tight ${theme.ink}`}>
+            Transformation Matrix
+          </h2>
+        </div>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 font-semibold">
+          AI v4 Engine
+        </span>
       </div>
 
       <SelectorFields
@@ -276,31 +309,37 @@ export function DesktopControlPanel({
         onAudienceChange={onAudienceChange}
         depth={depth}
         onDepthChange={onDepthChange}
+        theme={theme}
       />
 
-      <div className="mt-1 flex flex-col gap-1.5">
+      <div className="mt-auto pt-2 flex flex-col gap-2">
         <button
           type="button"
           disabled={isSourceEmpty || isTransforming}
           aria-busy={isTransforming}
           onClick={onTransform}
-          className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 focus-visible:ring-offset-2 ${
+          className={`inline-flex w-full items-center justify-center gap-2.5 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-150 whitespace-nowrap shadow-md focus-visible:outline-none focus-visible:ring-2 ${
+            theme.accentRing
+          } focus-visible:ring-offset-2 ${
             isSourceEmpty || isTransforming
-              ? 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
-              : 'bg-blue-700 text-white hover:bg-blue-800 cursor-pointer'
+              ? 'bg-white/10 text-zinc-500 cursor-not-allowed border border-white/5'
+              : `${theme.accent} ${theme.accentHover} ${theme.accentText} cursor-pointer active:scale-[0.98]`
           }`}
         >
           {isTransforming ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              <span>Transforming...</span>
+              <span>Synthesizing...</span>
             </>
           ) : (
-            <span>Transform</span>
+            <>
+              <span>Transform Content</span>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </>
           )}
         </button>
-        <p className="text-center text-[11px] text-zinc-500">
-          Shortcut: <kbd className="font-mono">⌘</kbd> / <kbd className="font-mono">Ctrl</kbd> + <kbd className="font-mono">Enter</kbd>
+        <p className={`text-center text-[11px] ${theme.inkSubtle}`}>
+          Shortcut: <kbd className="font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white">⌘ / Ctrl + Enter</kbd>
         </p>
       </div>
     </aside>
@@ -319,6 +358,7 @@ export function MobileControlBar({
   onTransform,
   isTransforming,
   isSourceEmpty,
+  theme,
 }: ControlPanelProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const settingsToggleRef = useRef<HTMLButtonElement>(null);
@@ -396,7 +436,7 @@ export function MobileControlBar({
       {isDrawerOpen ? (
         <div className="fixed inset-0 z-40 md:hidden flex flex-col justify-end">
           <div
-            className="fixed inset-0 bg-zinc-900/40"
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs"
             aria-hidden="true"
             onClick={() => setIsDrawerOpen(false)}
           />
@@ -406,17 +446,24 @@ export function MobileControlBar({
             role="dialog"
             aria-modal="true"
             aria-label="Transformation settings"
-            className="relative z-50 max-h-[82vh] overflow-y-auto rounded-t-2xl border-t border-zinc-200 bg-white px-4 pt-4 pb-6 shadow-xl"
+            className={`relative z-50 max-h-[85vh] overflow-y-auto rounded-t-3xl border-t p-5 shadow-2xl ${
+              theme.panel
+            } ${theme.border}`}
           >
-            <div className="mb-4 flex items-center justify-between border-b border-zinc-200 pb-3">
-              <h2 className="text-sm font-semibold text-zinc-900">
-                Transform Settings
-              </h2>
+            <div className={`mb-4 flex items-center justify-between border-b pb-3 ${theme.border}`}>
+              <div className="flex items-center gap-2">
+                <Sliders className="h-4 w-4 text-cyan-400" />
+                <h2 className={`text-base font-bold ${theme.ink}`}>
+                  Transformation Matrix
+                </h2>
+              </div>
               <button
                 type="button"
                 aria-label="Close settings"
                 onClick={() => setIsDrawerOpen(false)}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 cursor-pointer"
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border ${
+                  theme.tray
+                } ${theme.border} ${theme.inkMuted} hover:text-white cursor-pointer`}
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -432,13 +479,16 @@ export function MobileControlBar({
               onAudienceChange={onAudienceChange}
               depth={depth}
               onDepthChange={onDepthChange}
+              theme={theme}
             />
 
-            <div className="mt-5 flex items-center gap-2.5">
+            <div className="mt-6 flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
-                className="flex-1 rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 cursor-pointer"
+                className={`flex-1 rounded-xl border py-3 text-sm font-semibold ${
+                  theme.tray
+                } ${theme.border} ${theme.ink}`}
               >
                 Done
               </button>
@@ -449,13 +499,14 @@ export function MobileControlBar({
                   setIsDrawerOpen(false);
                   onTransform();
                 }}
-                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold shadow-lg ${
                   isSourceEmpty || isTransforming
-                    ? 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
-                    : 'bg-blue-700 text-white hover:bg-blue-800 cursor-pointer'
+                    ? 'bg-white/10 text-zinc-500 cursor-not-allowed'
+                    : `${theme.accent} ${theme.accentText} cursor-pointer`
                 }`}
               >
-                <span>Transform</span>
+                <span>Transform Now</span>
+                <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -463,7 +514,11 @@ export function MobileControlBar({
       ) : null}
 
       {/* Sticky mobile action bar (<768px) */}
-      <div className="sticky bottom-0 z-30 md:hidden border-t border-zinc-200 bg-white/95 backdrop-blur px-4 py-2.5">
+      <div
+        className={`sticky bottom-0 z-30 md:hidden border-t px-4 py-2.5 backdrop-blur-md ${
+          theme.header
+        }`}
+      >
         <div className="flex items-center justify-between gap-3">
           <button
             ref={settingsToggleRef}
@@ -471,10 +526,12 @@ export function MobileControlBar({
             aria-expanded={isDrawerOpen}
             aria-controls="mobile-settings-drawer"
             onClick={() => setIsDrawerOpen((prev) => !prev)}
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 cursor-pointer"
+            className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold whitespace-nowrap shrink-0 cursor-pointer ${
+              theme.tray
+            } ${theme.border} ${theme.ink}`}
           >
-            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-            <span>Settings</span>
+            <SlidersHorizontal className="h-4 w-4 text-cyan-400" aria-hidden="true" />
+            <span>Options</span>
           </button>
 
           <button
@@ -482,19 +539,22 @@ export function MobileControlBar({
             disabled={isSourceEmpty || isTransforming}
             aria-busy={isTransforming}
             onClick={onTransform}
-            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors duration-150 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
+            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold shadow-md whitespace-nowrap cursor-pointer ${
               isSourceEmpty || isTransforming
-                ? 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
-                : 'bg-blue-700 text-white hover:bg-blue-800 cursor-pointer'
+                ? 'bg-white/10 text-zinc-500 cursor-not-allowed'
+                : `${theme.accent} ${theme.accentText}`
             }`}
           >
             {isTransforming ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                <span>Transforming...</span>
+                <span>Synthesizing...</span>
               </>
             ) : (
-              <span>Transform</span>
+              <>
+                <span>Transform</span>
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </>
             )}
           </button>
         </div>

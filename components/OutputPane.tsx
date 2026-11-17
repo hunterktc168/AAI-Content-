@@ -3,9 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
+  ArrowRight,
+  BookOpen,
   Check,
+  Columns2,
   Copy,
   Download,
+  FileCheck2,
   FileText,
   GitCompareArrows,
   GraduationCap,
@@ -22,8 +26,14 @@ import type {
   Tone,
   TransformResult,
 } from '@/lib/types';
+import type { ThemeConfig } from '@/lib/theme';
 import type { ToastVariant } from './ToastBanner';
 import DiffViewer from './DiffViewer';
+import SplitSyncView from './SplitSyncView';
+import TTSPlayer from './TTSPlayer';
+import TransformProgressHUD from './TransformProgressHUD';
+
+export type OutputViewMode = 'reading' | 'split' | 'diff';
 
 interface OutputPaneProps {
   comparedSourceText: string;
@@ -34,6 +44,7 @@ interface OutputPaneProps {
   tone: Tone;
   audience: Audience;
   depth: Depth;
+  theme: ThemeConfig;
   onNotify: (variant: ToastVariant, message: string) => void;
 }
 
@@ -47,39 +58,6 @@ const PRESET_ICON_MAP: Record<string, LucideIcon> = {
   FileText,
 };
 
-function OutputSkeleton() {
-  return (
-    <div
-      role="status"
-      aria-label="Transforming content"
-      className="flex-1 flex flex-col justify-between gap-6 py-1"
-    >
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-col gap-2.5">
-          <div className="h-4 w-11/12 rounded bg-zinc-200/80 animate-pulse" />
-          <div className="h-4 w-full rounded bg-zinc-200/80 animate-pulse" />
-          <div className="h-4 w-4/5 rounded bg-zinc-200/80 animate-pulse" />
-        </div>
-        <div className="flex flex-col gap-2.5">
-          <div className="h-4 w-full rounded bg-zinc-200/80 animate-pulse" />
-          <div className="h-4 w-10/12 rounded bg-zinc-200/80 animate-pulse" />
-          <div className="h-4 w-3/4 rounded bg-zinc-200/80 animate-pulse" />
-        </div>
-        <div className="flex flex-col gap-2.5">
-          <div className="h-4 w-9/12 rounded bg-zinc-200/80 animate-pulse" />
-          <div className="h-4 w-2/3 rounded bg-zinc-200/80 animate-pulse" />
-        </div>
-      </div>
-
-      <div className="border-t border-zinc-100 pt-3 flex items-center justify-between">
-        <div className="h-3 w-20 rounded bg-zinc-200/70 animate-pulse" />
-        <div className="h-3 w-28 rounded bg-zinc-200/70 animate-pulse" />
-      </div>
-      <span className="sr-only">Transforming source text...</span>
-    </div>
-  );
-}
-
 export default function OutputPane({
   comparedSourceText,
   transformResult,
@@ -89,9 +67,10 @@ export default function OutputPane({
   tone,
   audience,
   depth,
+  theme,
   onNotify,
 }: OutputPaneProps) {
-  const [isCompareMode, setIsCompareMode] = useState(false);
+  const [viewMode, setViewMode] = useState<OutputViewMode>('reading');
   const [copied, setCopied] = useState(false);
   const [isExportingDocx, setIsExportingDocx] = useState(false);
   const copiedTimerRef = useRef<number | null>(null);
@@ -118,7 +97,7 @@ export default function OutputPane({
 
   const outputWordCount = hasSuccess
     ? transformResult.transformedText.trim()
-      ? transformResult.transformedText.trim().split(/\s+/).length
+      ? transformResult.transformedText.trim().split(/\s+/).filter(Boolean).length
       : 0
     : 0;
 
@@ -154,7 +133,7 @@ export default function OutputPane({
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    onNotify('success', 'Downloaded Markdown (.md) file.');
+    onNotify('success', 'Downloaded Markdown (.md) document.');
   };
 
   const handleDownloadDocx = async () => {
@@ -194,118 +173,175 @@ export default function OutputPane({
   return (
     <section
       aria-label="Transformed output workspace"
-      className="min-w-0 flex flex-col rounded-xl border border-zinc-200 bg-white overflow-hidden"
+      className={`min-w-0 flex flex-col rounded-2xl border transition-all duration-200 overflow-hidden ${
+        theme.panel
+      } ${theme.border}`}
     >
-      {/* Pane Header & Export Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-zinc-200 px-5 py-3.5 bg-zinc-50/60">
+      {/* Pane Header & Toolbar */}
+      <div
+        className={`flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3.5 ${
+          theme.panelHeader
+        } ${theme.border}`}
+      >
         <div className="flex items-center gap-2.5 min-w-0">
-          <h2 className="text-sm font-semibold tracking-tight text-zinc-900 whitespace-nowrap">
-            Output Workspace
+          <div
+            className={`flex h-6 w-6 items-center justify-center rounded-md border text-xs ${
+              activePreset.themeGlow ??
+              'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
+            }`}
+          >
+            <PresetIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </div>
+
+          <h2 className={`text-sm font-bold tracking-tight ${theme.ink} whitespace-nowrap`}>
+            Synthesized Prose
           </h2>
-          <span className="hidden xl:inline-flex items-center gap-1.5 text-xs text-zinc-500 truncate">
+
+          <span className={`hidden xl:inline-flex items-center gap-1.5 text-xs truncate ${theme.inkMuted}`}>
             <span aria-hidden="true">·</span>
-            <PresetIcon
-              className="h-3.5 w-3.5 shrink-0 text-zinc-500"
-              aria-hidden="true"
-            />
             <span className="truncate">
-              {activePreset.label} · {CAPITALIZE(tone)} · {CAPITALIZE(audience)} ·{' '}
-              {CAPITALIZE(depth)}
+              {activePreset.label} · {CAPITALIZE(tone)} · {CAPITALIZE(audience)} · {CAPITALIZE(depth)}
             </span>
           </span>
         </div>
 
+        {/* View Mode Switcher & Export Toolbar */}
         <div
           role="toolbar"
           aria-label="Export and comparison actions"
-          className="flex flex-wrap items-center gap-1.5 shrink-0"
+          className="flex flex-wrap items-center gap-2 shrink-0"
         >
-          <button
-            type="button"
-            disabled={!hasSuccess}
-            aria-label="Copy transformed text"
-            onClick={handleCopy}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-              !hasSuccess
-                ? 'border-zinc-200 bg-zinc-100 text-zinc-400 cursor-not-allowed'
-                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 cursor-pointer'
-            }`}
-          >
-            {copied ? (
-              <>
-                <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden="true" />
-                <span>Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Copy</span>
-              </>
-            )}
-          </button>
+          {/* View Mode Segmented Controls */}
+          {hasSuccess ? (
+            <div
+              className={`flex items-center rounded-xl p-0.5 border ${
+                theme.tray
+              } ${theme.border}`}
+            >
+              <button
+                type="button"
+                onClick={() => setViewMode('reading')}
+                aria-pressed={viewMode === 'reading'}
+                title="Reading View"
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === 'reading'
+                    ? 'bg-cyan-400 text-black shadow-xs font-bold'
+                    : `${theme.inkMuted} hover:text-white`
+                }`}
+              >
+                <BookOpen className="h-3 w-3" />
+                <span>Reading</span>
+              </button>
 
-          <button
-            type="button"
-            disabled={!hasSuccess}
-            aria-label="Download Markdown file"
-            onClick={handleDownloadMarkdown}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-              !hasSuccess
-                ? 'border-zinc-200 bg-zinc-100 text-zinc-400 cursor-not-allowed'
-                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 cursor-pointer'
-            }`}
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>.md</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('split')}
+                aria-pressed={viewMode === 'split'}
+                title="Side-by-Side Synchronized View"
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === 'split'
+                    ? 'bg-cyan-400 text-black shadow-xs font-bold'
+                    : `${theme.inkMuted} hover:text-white`
+                }`}
+              >
+                <Columns2 className="h-3 w-3" />
+                <span>Split</span>
+              </button>
 
-          <button
-            type="button"
-            disabled={!hasSuccess || isExportingDocx}
-            aria-label="Download Word document"
-            onClick={handleDownloadDocx}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-              !hasSuccess || isExportingDocx
-                ? 'border-zinc-200 bg-zinc-100 text-zinc-400 cursor-not-allowed'
-                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 cursor-pointer'
-            }`}
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>{isExportingDocx ? 'Exporting...' : '.docx'}</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('diff')}
+                aria-pressed={viewMode === 'diff'}
+                title="Diff & Revision Audit View"
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === 'diff'
+                    ? 'bg-cyan-400 text-black shadow-xs font-bold'
+                    : `${theme.inkMuted} hover:text-white`
+                }`}
+              >
+                <GitCompareArrows className="h-3 w-3" />
+                <span>Diff ({transformResult.changeLog.length})</span>
+              </button>
+            </div>
+          ) : null}
 
-          <button
-            type="button"
-            disabled={!hasSuccess}
-            aria-pressed={isCompareMode}
-            onClick={() => setIsCompareMode((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors duration-150 whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700 ${
-              !hasSuccess
-                ? 'border-zinc-200 bg-zinc-100 text-zinc-400 cursor-not-allowed'
-                : isCompareMode
-                ? 'border-blue-700 bg-blue-700 text-white cursor-pointer'
-                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 cursor-pointer'
-            }`}
-          >
-            <GitCompareArrows className="h-3.5 w-3.5" aria-hidden="true" />
-            <span>Compare</span>
-          </button>
+          {/* Text-to-Speech Audio Preview */}
+          {hasSuccess ? (
+            <TTSPlayer text={transformResult.transformedText} theme={theme} />
+          ) : null}
+
+          {/* Export Actions */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={!hasSuccess}
+              aria-label="Copy transformed text"
+              onClick={handleCopy}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+                !hasSuccess
+                  ? 'border-white/5 bg-white/5 text-zinc-500 cursor-not-allowed'
+                  : `${theme.tray} ${theme.borderHover} ${theme.ink} hover:text-white cursor-pointer`
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
+                  <span className="text-emerald-400 font-semibold">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              disabled={!hasSuccess}
+              aria-label="Download Markdown file"
+              onClick={handleDownloadMarkdown}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+                !hasSuccess
+                  ? 'border-white/5 bg-white/5 text-zinc-500 cursor-not-allowed'
+                  : `${theme.tray} ${theme.borderHover} ${theme.ink} hover:text-white cursor-pointer`
+              }`}
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>.md</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={!hasSuccess || isExportingDocx}
+              aria-label="Download Word document"
+              onClick={handleDownloadDocx}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+                !hasSuccess || isExportingDocx
+                  ? 'border-white/5 bg-white/5 text-zinc-500 cursor-not-allowed'
+                  : `${theme.tray} ${theme.borderHover} ${theme.ink} hover:text-white cursor-pointer`
+              }`}
+            >
+              <Download className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>{isExportingDocx ? 'Exporting...' : '.docx'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Reading / Skeleton / Diff / Empty / Inline Error Viewport */}
-      <div className="flex-1 flex flex-col px-5 py-5 min-h-[420px] lg:min-h-[520px]">
+      {/* Viewport: Reading / Split / Diff / Pipeline Progress / Empty / Error */}
+      <div className="flex-1 flex flex-col px-5 py-5 min-h-[420px] lg:min-h-[530px]">
         <AnimatePresence mode="wait">
           {isTransforming ? (
             <motion.div
-              key="loading-skeleton"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
+              key="loading-pipeline"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.15 }}
               className="flex-1 flex flex-col"
             >
-              <OutputSkeleton />
+              <TransformProgressHUD presetId={presetId} theme={theme} />
             </motion.div>
           ) : isInlineError ? (
             <motion.div
@@ -315,19 +351,19 @@ export default function OutputPane({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               role="alert"
-              className="rounded-lg border border-rose-200 bg-rose-50 p-4 flex items-start gap-3 text-sm text-rose-900"
+              className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 flex items-start gap-3.5 text-sm text-rose-300"
             >
               <AlertCircle
-                className="h-4 w-4 shrink-0 text-rose-600 mt-0.5"
+                className="h-5 w-5 shrink-0 text-rose-400 mt-0.5"
                 aria-hidden="true"
               />
               <div className="flex flex-col gap-1">
-                <p className="font-medium">
+                <p className="font-bold text-rose-200">
                   {transformResult.code === 'too_large'
                     ? 'Input size limit exceeded'
                     : 'Validation error'}
                 </p>
-                <p className="text-rose-800">{transformResult.error}</p>
+                <p className="text-rose-300">{transformResult.error}</p>
               </div>
             </motion.div>
           ) : !hasSuccess ? (
@@ -339,13 +375,37 @@ export default function OutputPane({
               transition={{ duration: 0.15 }}
               className="flex-1 flex flex-col items-center justify-center text-center px-6 py-12"
             >
-              <p className="text-sm text-zinc-500 max-w-xs leading-relaxed">
-                Your transformed text will appear here.
+              <div className="relative mb-4 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-cyan-500/15 blur-lg" />
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/10 text-cyan-400 shadow-md">
+                  <FileCheck2 className="h-7 w-7" aria-hidden="true" />
+                </div>
+              </div>
+              <p className={`text-base font-bold ${theme.ink}`}>
+                Universal Content Transformation Engine
+              </p>
+              <p className={`mt-1.5 text-xs max-w-sm leading-relaxed ${theme.inkSubtle}`}>
+                Select a transformation preset, calibrate tone & audience, then trigger synthesis via <kbd className="font-mono bg-white/10 px-1 py-0.5 rounded text-white">⌘ / Ctrl + Enter</kbd>.
               </p>
             </motion.div>
-          ) : isCompareMode ? (
+          ) : viewMode === 'split' ? (
             <motion.div
-              key="compare"
+              key="split"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex-1"
+            >
+              <SplitSyncView
+                sourceText={comparedSourceText}
+                transformedText={transformResult.transformedText}
+                theme={theme}
+              />
+            </motion.div>
+          ) : viewMode === 'diff' ? (
+            <motion.div
+              key="diff"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -356,45 +416,72 @@ export default function OutputPane({
                 key={resultKey}
                 result={transformResult}
                 source={comparedSourceText}
+                theme={theme}
               />
             </motion.div>
           ) : null}
         </AnimatePresence>
 
-        {/* Persistent aria-live="polite" region wrapping only the transformed text so initial empty render never fires and completion updates always announce */}
+        {/* Persistent aria-live="polite" region wrapping transformed text */}
         <div
           className={
-            hasSuccess && !isCompareMode
+            hasSuccess && viewMode === 'reading'
               ? 'flex-1 flex flex-col justify-between gap-6'
               : 'sr-only'
           }
         >
           <div aria-live="polite" aria-atomic="false">
-            {hasSuccess && !isCompareMode ? (
+            {hasSuccess && viewMode === 'reading' ? (
               <motion.article
                 key={resultKey}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.15 }}
-                className="max-w-prose text-[15px] leading-relaxed text-zinc-800 whitespace-pre-wrap break-words"
+                className={`max-w-[68ch] text-[15.5px] leading-[1.75] font-normal whitespace-pre-wrap break-words ${theme.ink}`}
               >
                 {transformResult.transformedText}
               </motion.article>
             ) : null}
           </div>
 
-          {hasSuccess && !isCompareMode ? (
-            <div className="font-mono tabular-nums border-t border-zinc-100 pt-3 flex items-center justify-between text-xs text-zinc-500">
-              <span>
-                {outputWordCount.toLocaleString()}{' '}
-                {outputWordCount === 1 ? 'word' : 'words'}
-              </span>
-              <span>
-                {transformResult.changeLog.length}{' '}
-                {transformResult.changeLog.length === 1
-                  ? 'logged revision'
-                  : 'logged revisions'}
-              </span>
+          {hasSuccess && viewMode === 'reading' ? (
+            <div
+              className={`border-t pt-3.5 flex flex-wrap items-center justify-between gap-3 text-xs ${
+                theme.border
+              } ${theme.inkMuted}`}
+            >
+              <div className="font-mono tabular-nums flex items-center gap-2.5">
+                <span className="text-cyan-400 font-bold">
+                  {outputWordCount.toLocaleString()}{' '}
+                  {outputWordCount === 1 ? 'word' : 'words'}
+                </span>
+                <span aria-hidden="true" className={theme.inkSubtle}>·</span>
+                <span>
+                  {transformResult.changeLog.length}{' '}
+                  {transformResult.changeLog.length === 1
+                    ? 'revision logged'
+                    : 'revisions logged'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('split')}
+                  className="inline-flex items-center gap-1 font-semibold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                >
+                  <span>Side-by-side view</span>
+                  <Columns2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('diff')}
+                  className="inline-flex items-center gap-1 font-semibold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                >
+                  <span>Inspect diff log</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           ) : null}
         </div>

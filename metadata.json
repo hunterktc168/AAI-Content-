@@ -1,0 +1,6 @@
+{
+  "name": "Verbatim",
+  "description": "Universal content transformation engine for restructuring text across style, tone, audience, and depth with strict factual fidelity.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

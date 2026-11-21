@@ -46,28 +46,32 @@ const AUDIENCE_OPTIONS: DropdownOption<Audience>[] = [
     label: 'General Audience',
     tagline: 'Universal accessibility & direct clarity',
     icon: Users,
-    themeGlow: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400',
+    themeGlow:
+      'bg-cyan-500/15 border-cyan-600/30 text-cyan-800 dark:border-cyan-500/30 dark:text-cyan-400',
   },
   {
     value: 'executive',
     label: 'Executive Leadership',
     tagline: 'High-signal briefings & strategic takeaways',
     icon: Briefcase,
-    themeGlow: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+    themeGlow:
+      'bg-amber-500/15 border-amber-600/30 text-amber-800 dark:border-amber-500/30 dark:text-amber-400',
   },
   {
     value: 'specialist',
     label: 'Technical Specialist',
     tagline: 'Domain rigour, exact terminology & data',
     icon: Cpu,
-    themeGlow: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
+    themeGlow:
+      'bg-purple-500/15 border-purple-600/30 text-purple-800 dark:border-purple-500/30 dark:text-purple-400',
   },
   {
     value: 'student',
     label: 'Student / Learner',
     tagline: 'Step-by-step scaffolding & clear analogies',
     icon: GraduationCap,
-    themeGlow: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
+    themeGlow:
+      'bg-emerald-500/15 border-emerald-600/30 text-emerald-800 dark:border-emerald-500/30 dark:text-emerald-400',
   },
 ];
 
@@ -117,7 +121,6 @@ function SelectorFields({
   onDepthChange,
   theme,
 }: SelectorFieldsProps) {
-  // Map presets meta to DropdownOptions
   const presetDropdownOptions: DropdownOption<PresetId>[] = PRESETS_META.map(
     (meta) => ({
       value: meta.id,
@@ -179,7 +182,7 @@ function SelectorFields({
                 } ${
                   active
                     ? `${theme.activeSegmentBg} ${theme.activeSegmentShadow}`
-                    : `${theme.inkMuted} hover:text-white`
+                    : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
                 }`}
               >
                 <ToneIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -218,7 +221,7 @@ function SelectorFields({
                 } ${
                   active
                     ? `${theme.activeSegmentBg} ${theme.activeSegmentShadow}`
-                    : `${theme.inkMuted} hover:text-white`
+                    : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
                 }`}
               >
                 <div className="flex items-center gap-1">
@@ -241,7 +244,9 @@ function SelectorFields({
         aria-disabled="true"
         className={`border-t pt-3 text-xs ${theme.border} ${theme.inkSubtle}`}
       >
-        <summary className="cursor-pointer select-none font-medium hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400 rounded">
+        <summary
+          className={`cursor-pointer select-none font-medium ${theme.inkHover} focus-visible:outline-none focus-visible:ring-2 ${theme.accentRing} rounded`}
+        >
           Custom Writing Style (Coming Soon)
         </summary>
         <div className="mt-2.5">
@@ -289,13 +294,13 @@ export function DesktopControlPanel({
     >
       <div className={`border-b pb-3.5 flex items-center justify-between ${theme.border}`}>
         <div className="flex items-center gap-2">
-          <Sliders className="h-4 w-4 text-cyan-400" aria-hidden="true" />
+          <Sliders className={`h-4 w-4 ${theme.accentFg}`} aria-hidden="true" />
           <h2 className={`text-sm font-bold tracking-tight ${theme.ink}`}>
             Transformation Matrix
           </h2>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 font-semibold">
-          AI v4 Engine
+        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold ${theme.accentBadge}`}>
+          Medium Think
         </span>
       </div>
 
@@ -318,12 +323,12 @@ export function DesktopControlPanel({
           disabled={isSourceEmpty || isTransforming}
           aria-busy={isTransforming}
           onClick={onTransform}
-          className={`inline-flex w-full items-center justify-center gap-2.5 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-150 whitespace-nowrap shadow-md focus-visible:outline-none focus-visible:ring-2 ${
+          className={`inline-flex w-full items-center justify-center gap-2.5 rounded-xl px-4 py-3 text-sm font-bold transition-all duration-150 whitespace-nowrap shadow-md border focus-visible:outline-none focus-visible:ring-2 ${
             theme.accentRing
           } focus-visible:ring-offset-2 ${
             isSourceEmpty || isTransforming
-              ? 'bg-white/10 text-zinc-500 cursor-not-allowed border border-white/5'
-              : `${theme.accent} ${theme.accentHover} ${theme.accentText} cursor-pointer active:scale-[0.98]`
+              ? theme.disabledButton
+              : `${theme.accent} ${theme.accentHover} ${theme.accentText} border-transparent cursor-pointer active:scale-[0.98]`
           }`}
         >
           {isTransforming ? (
@@ -339,7 +344,7 @@ export function DesktopControlPanel({
           )}
         </button>
         <p className={`text-center text-[11px] ${theme.inkSubtle}`}>
-          Shortcut: <kbd className="font-mono bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white">⌘ / Ctrl + Enter</kbd>
+          Shortcut: <kbd className={`font-mono px-1.5 py-0.5 rounded ${theme.kbd}`}>⌘ / Ctrl + Enter</kbd>
         </p>
       </div>
     </aside>
@@ -452,7 +457,7 @@ export function MobileControlBar({
           >
             <div className={`mb-4 flex items-center justify-between border-b pb-3 ${theme.border}`}>
               <div className="flex items-center gap-2">
-                <Sliders className="h-4 w-4 text-cyan-400" />
+                <Sliders className={`h-4 w-4 ${theme.accentFg}`} aria-hidden="true" />
                 <h2 className={`text-base font-bold ${theme.ink}`}>
                   Transformation Matrix
                 </h2>
@@ -463,7 +468,7 @@ export function MobileControlBar({
                 onClick={() => setIsDrawerOpen(false)}
                 className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border ${
                   theme.tray
-                } ${theme.border} ${theme.inkMuted} hover:text-white cursor-pointer`}
+                } ${theme.border} ${theme.inkMuted} ${theme.inkHover} cursor-pointer`}
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
@@ -486,7 +491,7 @@ export function MobileControlBar({
               <button
                 type="button"
                 onClick={() => setIsDrawerOpen(false)}
-                className={`flex-1 rounded-xl border py-3 text-sm font-semibold ${
+                className={`flex-1 rounded-xl border py-3 text-sm font-semibold cursor-pointer ${
                   theme.tray
                 } ${theme.border} ${theme.ink}`}
               >
@@ -499,14 +504,14 @@ export function MobileControlBar({
                   setIsDrawerOpen(false);
                   onTransform();
                 }}
-                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold shadow-lg ${
+                className={`flex-1 inline-flex items-center justify-center gap-2 rounded-xl border py-3 text-sm font-bold shadow-lg ${
                   isSourceEmpty || isTransforming
-                    ? 'bg-white/10 text-zinc-500 cursor-not-allowed'
-                    : `${theme.accent} ${theme.accentText} cursor-pointer`
+                    ? theme.disabledButton
+                    : `${theme.accent} ${theme.accentText} border-transparent cursor-pointer`
                 }`}
               >
                 <span>Transform Now</span>
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -530,7 +535,7 @@ export function MobileControlBar({
               theme.tray
             } ${theme.border} ${theme.ink}`}
           >
-            <SlidersHorizontal className="h-4 w-4 text-cyan-400" aria-hidden="true" />
+            <SlidersHorizontal className={`h-4 w-4 ${theme.accentFg}`} aria-hidden="true" />
             <span>Options</span>
           </button>
 
@@ -539,10 +544,10 @@ export function MobileControlBar({
             disabled={isSourceEmpty || isTransforming}
             aria-busy={isTransforming}
             onClick={onTransform}
-            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold shadow-md whitespace-nowrap cursor-pointer ${
+            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold shadow-md whitespace-nowrap ${
               isSourceEmpty || isTransforming
-                ? 'bg-white/10 text-zinc-500 cursor-not-allowed'
-                : `${theme.accent} ${theme.accentText}`
+                ? theme.disabledButton
+                : `${theme.accent} ${theme.accentText} border-transparent cursor-pointer`
             }`}
           >
             {isTransforming ? (

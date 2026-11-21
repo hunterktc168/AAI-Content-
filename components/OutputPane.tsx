@@ -132,7 +132,7 @@ export default function OutputPane({
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     onNotify('success', 'Downloaded Markdown (.md) document.');
   };
 
@@ -186,8 +186,7 @@ export default function OutputPane({
         <div className="flex items-center gap-2.5 min-w-0">
           <div
             className={`flex h-6 w-6 items-center justify-center rounded-md border text-xs ${
-              activePreset.themeGlow ??
-              'bg-cyan-500/15 border-cyan-500/30 text-cyan-400'
+              activePreset.themeGlow ?? theme.accentBadge
             }`}
           >
             <PresetIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -225,11 +224,11 @@ export default function OutputPane({
                 title="Reading View"
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === 'reading'
-                    ? 'bg-cyan-400 text-black shadow-xs font-bold'
-                    : `${theme.inkMuted} hover:text-white`
+                    ? `${theme.activeSegmentBg} ${theme.activeSegmentShadow}`
+                    : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
                 }`}
               >
-                <BookOpen className="h-3 w-3" />
+                <BookOpen className="h-3 w-3" aria-hidden="true" />
                 <span>Reading</span>
               </button>
 
@@ -240,11 +239,11 @@ export default function OutputPane({
                 title="Side-by-Side Synchronized View"
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === 'split'
-                    ? 'bg-cyan-400 text-black shadow-xs font-bold'
-                    : `${theme.inkMuted} hover:text-white`
+                    ? `${theme.activeSegmentBg} ${theme.activeSegmentShadow}`
+                    : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
                 }`}
               >
-                <Columns2 className="h-3 w-3" />
+                <Columns2 className="h-3 w-3" aria-hidden="true" />
                 <span>Split</span>
               </button>
 
@@ -255,11 +254,11 @@ export default function OutputPane({
                 title="Diff & Revision Audit View"
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
                   viewMode === 'diff'
-                    ? 'bg-cyan-400 text-black shadow-xs font-bold'
-                    : `${theme.inkMuted} hover:text-white`
+                    ? `${theme.activeSegmentBg} ${theme.activeSegmentShadow}`
+                    : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
                 }`}
               >
-                <GitCompareArrows className="h-3 w-3" />
+                <GitCompareArrows className="h-3 w-3" aria-hidden="true" />
                 <span>Diff ({transformResult.changeLog.length})</span>
               </button>
             </div>
@@ -279,14 +278,19 @@ export default function OutputPane({
               onClick={handleCopy}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 !hasSuccess
-                  ? 'border-white/5 bg-white/5 text-zinc-500 cursor-not-allowed'
-                  : `${theme.tray} ${theme.borderHover} ${theme.ink} hover:text-white cursor-pointer`
+                  ? theme.disabledButton
+                  : `${theme.tray} ${theme.border} ${theme.borderHover} ${theme.ink} cursor-pointer`
               }`}
             >
               {copied ? (
                 <>
-                  <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" />
-                  <span className="text-emerald-400 font-semibold">Copied</span>
+                  <Check
+                    className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400"
+                    aria-hidden="true"
+                  />
+                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                    Copied
+                  </span>
                 </>
               ) : (
                 <>
@@ -303,8 +307,8 @@ export default function OutputPane({
               onClick={handleDownloadMarkdown}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 !hasSuccess
-                  ? 'border-white/5 bg-white/5 text-zinc-500 cursor-not-allowed'
-                  : `${theme.tray} ${theme.borderHover} ${theme.ink} hover:text-white cursor-pointer`
+                  ? theme.disabledButton
+                  : `${theme.tray} ${theme.border} ${theme.borderHover} ${theme.ink} cursor-pointer`
               }`}
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
@@ -318,8 +322,8 @@ export default function OutputPane({
               onClick={handleDownloadDocx}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 !hasSuccess || isExportingDocx
-                  ? 'border-white/5 bg-white/5 text-zinc-500 cursor-not-allowed'
-                  : `${theme.tray} ${theme.borderHover} ${theme.ink} hover:text-white cursor-pointer`
+                  ? theme.disabledButton
+                  : `${theme.tray} ${theme.border} ${theme.borderHover} ${theme.ink} cursor-pointer`
               }`}
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
@@ -351,19 +355,19 @@ export default function OutputPane({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               role="alert"
-              className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 flex items-start gap-3.5 text-sm text-rose-300"
+              className={`rounded-2xl border p-5 flex items-start gap-3.5 text-sm ${theme.errorSurface}`}
             >
               <AlertCircle
-                className="h-5 w-5 shrink-0 text-rose-400 mt-0.5"
+                className="h-5 w-5 shrink-0 mt-0.5"
                 aria-hidden="true"
               />
               <div className="flex flex-col gap-1">
-                <p className="font-bold text-rose-200">
+                <p className={`font-bold ${theme.errorTitle}`}>
                   {transformResult.code === 'too_large'
                     ? 'Input size limit exceeded'
                     : 'Validation error'}
                 </p>
-                <p className="text-rose-300">{transformResult.error}</p>
+                <p>{transformResult.error}</p>
               </div>
             </motion.div>
           ) : !hasSuccess ? (
@@ -376,8 +380,9 @@ export default function OutputPane({
               className="flex-1 flex flex-col items-center justify-center text-center px-6 py-12"
             >
               <div className="relative mb-4 flex items-center justify-center">
-                <div className="absolute inset-0 rounded-full bg-cyan-500/15 blur-lg" />
-                <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/20 to-blue-500/10 text-cyan-400 shadow-md">
+                <div
+                  className={`relative flex h-14 w-14 items-center justify-center rounded-2xl shadow-md ${theme.accentBadge}`}
+                >
                   <FileCheck2 className="h-7 w-7" aria-hidden="true" />
                 </div>
               </div>
@@ -385,7 +390,11 @@ export default function OutputPane({
                 Universal Content Transformation Engine
               </p>
               <p className={`mt-1.5 text-xs max-w-sm leading-relaxed ${theme.inkSubtle}`}>
-                Select a transformation preset, calibrate tone & audience, then trigger synthesis via <kbd className="font-mono bg-white/10 px-1 py-0.5 rounded text-white">⌘ / Ctrl + Enter</kbd>.
+                Select a transformation preset, calibrate tone & audience, then trigger synthesis via{' '}
+                <kbd className={`font-mono px-1.5 py-0.5 rounded ${theme.kbd}`}>
+                  ⌘ / Ctrl + Enter
+                </kbd>
+                .
               </p>
             </motion.div>
           ) : viewMode === 'split' ? (
@@ -451,11 +460,13 @@ export default function OutputPane({
               } ${theme.inkMuted}`}
             >
               <div className="font-mono tabular-nums flex items-center gap-2.5">
-                <span className="text-cyan-400 font-bold">
+                <span className={`font-bold ${theme.accentFg}`}>
                   {outputWordCount.toLocaleString()}{' '}
                   {outputWordCount === 1 ? 'word' : 'words'}
                 </span>
-                <span aria-hidden="true" className={theme.inkSubtle}>·</span>
+                <span aria-hidden="true" className={theme.inkSubtle}>
+                  ·
+                </span>
                 <span>
                   {transformResult.changeLog.length}{' '}
                   {transformResult.changeLog.length === 1
@@ -468,18 +479,18 @@ export default function OutputPane({
                 <button
                   type="button"
                   onClick={() => setViewMode('split')}
-                  className="inline-flex items-center gap-1 font-semibold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                  className={`inline-flex items-center gap-1 font-semibold ${theme.accentFg} hover:opacity-80 transition-opacity cursor-pointer`}
                 >
                   <span>Side-by-side view</span>
-                  <Columns2 className="h-3.5 w-3.5" />
+                  <Columns2 className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode('diff')}
-                  className="inline-flex items-center gap-1 font-semibold text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+                  className={`inline-flex items-center gap-1 font-semibold ${theme.accentFg} hover:opacity-80 transition-opacity cursor-pointer`}
                 >
                   <span>Inspect diff log</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               </div>
             </div>

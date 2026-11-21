@@ -9,7 +9,8 @@ export const PRESETS_META: PresetMeta[] = [
       'Streamlines syntax, eliminates redundancy, and sharpens structure without losing nuance.',
     icon: 'Sparkles',
     badgeColor: 'cyan',
-    themeGlow: 'from-cyan-500/20 to-blue-500/10 border-cyan-500/40 text-cyan-400',
+    themeGlow:
+      'bg-cyan-500/15 border-cyan-600/30 text-cyan-800 dark:border-cyan-500/40 dark:text-cyan-400',
   },
   {
     id: 'phd_authority',
@@ -19,7 +20,8 @@ export const PRESETS_META: PresetMeta[] = [
       'Elevates prose to scholarly precision with disciplined transitions and formal register.',
     icon: 'GraduationCap',
     badgeColor: 'purple',
-    themeGlow: 'from-purple-500/20 to-indigo-500/10 border-purple-500/40 text-purple-400',
+    themeGlow:
+      'bg-purple-500/15 border-purple-600/30 text-purple-800 dark:border-purple-500/40 dark:text-purple-400',
   },
   {
     id: 'gonzo',
@@ -29,7 +31,8 @@ export const PRESETS_META: PresetMeta[] = [
       'Injects kinetic pacing and arresting imagery while keeping every stated fact intact.',
     icon: 'Zap',
     badgeColor: 'amber',
-    themeGlow: 'from-amber-500/20 to-orange-500/10 border-amber-500/40 text-amber-400',
+    themeGlow:
+      'bg-amber-500/15 border-amber-600/30 text-amber-800 dark:border-amber-500/40 dark:text-amber-400',
   },
   {
     id: 'executive',
@@ -39,6 +42,7 @@ export const PRESETS_META: PresetMeta[] = [
       'Distills key decisions, evidence, and takeaways into scannable, high-signal prose.',
     icon: 'FileText',
     badgeColor: 'emerald',
-    themeGlow: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/40 text-emerald-400',
+    themeGlow:
+      'bg-emerald-500/15 border-emerald-600/30 text-emerald-800 dark:border-emerald-500/40 dark:text-emerald-400',
   },
 ];

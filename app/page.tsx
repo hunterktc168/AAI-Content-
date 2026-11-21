@@ -191,14 +191,19 @@ export default function HomePage() {
       setTransformResult(networkError);
       console.error('Transform request failed due to a network error.');
     } finally {
+      const isLatestRequest =
+        abortControllerRef.current === controller ||
+        abortControllerRef.current === null;
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
       }
-      setIsTransforming(false);
+      if (isLatestRequest) {
+        setIsTransforming(false);
+      }
     }
   }, [sourceText, presetId, tone, audience, depth, showToast]);
 
-  // Global keyboard shortcut: Cmd/Ctrl + Enter triggers Transform outside dialogs/selects/inputs
+  // Global keyboard shortcut: Cmd/Ctrl + Enter triggers Transform outside dialogs/selects/inputs/open dropdowns
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key !== 'Enter') {
@@ -208,6 +213,13 @@ export default function HomePage() {
       const activeEl = document.activeElement;
       if (activeEl) {
         if (activeEl.closest('[role="dialog"]')) return;
+        if (activeEl.closest('[role="listbox"]')) return;
+        if (
+          activeEl.getAttribute('role') === 'combobox' &&
+          activeEl.getAttribute('aria-expanded') === 'true'
+        ) {
+          return;
+        }
         const tag = activeEl.tagName.toLowerCase();
         if (tag === 'select' || tag === 'input') return;
       }
@@ -223,12 +235,15 @@ export default function HomePage() {
   }, [isTransforming, sourceText, handleTransform]);
 
   const isSourceEmpty = sourceText.trim().length === 0;
+  const analyticsSourceText = transformResult?.ok
+    ? comparedSourceText
+    : sourceText;
 
   return (
     <div
       className={`min-h-screen flex flex-col transition-colors duration-200 ${themeConfig.shell}`}
     >
-      {/* Top Navigation Bar: Clean 3-zone contract */}
+      {/* Top Navigation Bar */}
       <header
         className={`border-b sticky top-0 z-30 backdrop-blur-md transition-colors duration-200 ${themeConfig.header}`}
       >
@@ -244,11 +259,6 @@ export default function HomePage() {
               V
             </span>
             <span className={themeConfig.ink}>Verbatim</span>
-            <span
-              className={`hidden sm:inline-block text-[11px] font-normal px-2 py-0.5 rounded-full border ${themeConfig.border} ${themeConfig.tray} ${themeConfig.inkMuted}`}
-            >
-              Content Engine
-            </span>
           </Link>
 
           {/* Zone 2: Theme Selector */}
@@ -274,10 +284,12 @@ export default function HomePage() {
                   aria-checked={isSelected}
                   onClick={() => setCurrentTheme(mode)}
                   title={`${t.name} — ${t.tagline}`}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 ${
+                    themeConfig.accentRing
+                  } ${
                     isSelected
                       ? `${t.activeSegmentBg} ${t.activeSegmentShadow}`
-                      : `${themeConfig.inkMuted} hover:${themeConfig.ink} hover:bg-white/5`
+                      : `${themeConfig.inkMuted} ${themeConfig.inkHover} ${themeConfig.surfaceHover}`
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -294,7 +306,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={handleLoadSample}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0 ${themeConfig.border} ${themeConfig.tray} ${themeConfig.inkMuted} hover:${themeConfig.ink} hover:border-slate-500/50`}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0 ${themeConfig.border} ${themeConfig.borderHover} ${themeConfig.tray} ${themeConfig.inkMuted} ${themeConfig.inkHover}`}
             >
               Load Sample
             </button>
@@ -303,7 +315,7 @@ export default function HomePage() {
               onClick={handleResetWorkspace}
               title="Reset workspace"
               aria-label="Reset workspace"
-              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0 ${themeConfig.border} ${themeConfig.tray} ${themeConfig.inkMuted} hover:${themeConfig.ink}`}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all duration-150 cursor-pointer whitespace-nowrap shrink-0 ${themeConfig.border} ${themeConfig.borderHover} ${themeConfig.tray} ${themeConfig.inkMuted} ${themeConfig.inkHover}`}
             >
               <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="hidden sm:inline">Reset</span>
@@ -317,7 +329,7 @@ export default function HomePage() {
         {/* Real-time Analytics & Transformation Delta HUD */}
         <div className="mb-4">
           <AnalyticsHUD
-            sourceText={sourceText}
+            sourceText={analyticsSourceText}
             transformedText={
               transformResult?.ok ? transformResult.transformedText : null
             }

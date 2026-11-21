@@ -4,14 +4,16 @@ import { useRef, useState, type DragEvent, type ChangeEvent } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
+  Briefcase,
   Eraser,
   FileText,
+  GraduationCap,
   HardDrive,
   Sparkles,
   Upload,
-  Wand2,
   WrapText,
   X,
+  Zap,
 } from 'lucide-react';
 import { MAX_INPUT_CHARS } from '@/lib/constants';
 import type { ThemeConfig } from '@/lib/theme';
@@ -36,6 +38,7 @@ export default function IngestionPane({
   theme,
 }: IngestionPaneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const parseSeqRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -43,12 +46,16 @@ export default function IngestionPane({
   const [truncationNotice, setTruncationNotice] = useState<string | null>(null);
 
   const charCount = sourceText.length;
-  const wordCount = sourceText.trim() ? sourceText.trim().split(/\s+/).filter(Boolean).length : 0;
-  const isNearLimit = charCount >= MAX_INPUT_CHARS * 0.8 && charCount < MAX_INPUT_CHARS;
+  const wordCount = sourceText.trim()
+    ? sourceText.trim().split(/\s+/).filter(Boolean).length
+    : 0;
+  const isNearLimit =
+    charCount >= MAX_INPUT_CHARS * 0.8 && charCount < MAX_INPUT_CHARS;
   const isAtLimit = charCount >= MAX_INPUT_CHARS;
 
   const processFile = async (file: File) => {
     if (isParsingFile) return;
+    const seq = ++parseSeqRef.current;
     setFileError(null);
     setTruncationNotice(null);
 
@@ -87,6 +94,8 @@ export default function IngestionPane({
         extracted = await file.text();
       }
 
+      if (parseSeqRef.current !== seq) return;
+
       const normalized = extracted.replace(/\r\n/g, '\n');
 
       if (!normalized.trim()) {
@@ -107,11 +116,14 @@ export default function IngestionPane({
 
       setUploadedFileName(file.name);
     } catch {
+      if (parseSeqRef.current !== seq) return;
       setFileError(
         `Failed to extract text from "${file.name}". Please verify the file is valid and unencrypted.`
       );
     } finally {
-      setIsParsingFile(false);
+      if (parseSeqRef.current === seq) {
+        setIsParsingFile(false);
+      }
     }
   };
 
@@ -147,13 +159,14 @@ export default function IngestionPane({
   };
 
   const handleClearSource = () => {
+    parseSeqRef.current += 1;
+    setIsParsingFile(false);
     onSourceTextChange('');
     setUploadedFileName(null);
     setFileError(null);
     setTruncationNotice(null);
   };
 
-  // Text format utilities
   const handleCleanWhitespace = () => {
     if (!sourceText.trim()) return;
     const cleaned = sourceText
@@ -166,7 +179,6 @@ export default function IngestionPane({
 
   const handleNormalizeParagraphs = () => {
     if (!sourceText.trim()) return;
-    // Replace single line breaks inside paragraphs with space, keeping double linebreaks
     const paragraphs = sourceText.split(/\n\s*\n/);
     const normalized = paragraphs
       .map((p) => p.replace(/\s+/g, ' ').trim())
@@ -189,17 +201,21 @@ export default function IngestionPane({
         } ${theme.border}`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
-            <FileText className="h-3.5 w-3.5" />
+          <div
+            className={`flex h-6 w-6 items-center justify-center rounded-md ${theme.accentBadge}`}
+          >
+            <FileText className="h-3.5 w-3.5" aria-hidden="true" />
           </div>
           <h2 className={`text-sm font-bold tracking-tight ${theme.ink}`}>
             Source Ingestion
           </h2>
 
           {uploadedFileName ? (
-            <span className={`inline-flex items-center gap-1.5 text-xs truncate ${theme.inkMuted}`}>
+            <span
+              className={`inline-flex items-center gap-1.5 text-xs truncate ${theme.inkMuted}`}
+            >
               <span aria-hidden="true">·</span>
-              <span className="truncate text-cyan-400 font-medium">
+              <span className={`truncate font-medium ${theme.accentFg}`}>
                 {uploadedFileName}
               </span>
             </span>
@@ -208,7 +224,9 @@ export default function IngestionPane({
 
         {/* Toolbar & Clear Action */}
         <div className="flex items-center gap-2.5 shrink-0">
-          <span className={`font-mono tabular-nums text-xs ${theme.inkSubtle} hidden sm:inline`}>
+          <span
+            className={`font-mono tabular-nums text-xs ${theme.inkSubtle} hidden sm:inline`}
+          >
             {wordCount.toLocaleString()} {wordCount === 1 ? 'word' : 'words'}
           </span>
 
@@ -218,30 +236,30 @@ export default function IngestionPane({
                 type="button"
                 onClick={handleCleanWhitespace}
                 title="Remove duplicate spaces and clean empty lines"
-                className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors ${
+                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
                   theme.tray
-                } ${theme.borderHover} ${theme.inkMuted} hover:text-white cursor-pointer`}
+                } ${theme.border} ${theme.borderHover} ${theme.inkMuted} ${theme.inkHover}`}
               >
-                <Eraser className="h-3 w-3" />
+                <Eraser className="h-3 w-3" aria-hidden="true" />
                 <span className="hidden md:inline">Trim</span>
               </button>
               <button
                 type="button"
                 onClick={handleNormalizeParagraphs}
                 title="Unwrap broken single linebreaks into clean paragraphs"
-                className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors ${
+                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium transition-colors cursor-pointer ${
                   theme.tray
-                } ${theme.borderHover} ${theme.inkMuted} hover:text-white cursor-pointer`}
+                } ${theme.border} ${theme.borderHover} ${theme.inkMuted} ${theme.inkHover}`}
               >
-                <WrapText className="h-3 w-3" />
+                <WrapText className="h-3 w-3" aria-hidden="true" />
                 <span className="hidden md:inline">Unwrap</span>
               </button>
               <button
                 type="button"
                 onClick={handleClearSource}
-                className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors text-rose-400 hover:bg-rose-500/10 cursor-pointer`}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium transition-colors text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
                 <span>Clear</span>
               </button>
             </div>
@@ -252,56 +270,62 @@ export default function IngestionPane({
       {/* Quick Preset Strip (1-click Instant Preset Switching) */}
       {onSelectQuickPreset ? (
         <div
-          className={`flex items-center gap-1.5 px-4 py-2 border-b overflow-x-auto scrollbar-none text-xs ${
+          className={`flex items-center gap-1.5 px-4 py-2 border-b overflow-x-auto text-xs ${
             theme.tray
           } ${theme.border}`}
         >
-          <span className={`text-[10px] font-mono uppercase tracking-wider ${theme.inkSubtle} shrink-0 mr-1`}>
+          <span
+            className={`text-[10px] font-mono uppercase tracking-wider ${theme.inkSubtle} shrink-0 mr-1`}
+          >
             Quick:
           </span>
           <button
             type="button"
             onClick={() => onSelectQuickPreset('executive')}
-            className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
               activePresetId === 'executive'
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-xs'
-                : `${theme.inkMuted} hover:text-white hover:bg-white/5`
+                ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 shadow-xs'
+                : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
             }`}
           >
-            <span>💼 Executive Memo</span>
+            <Briefcase className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>Executive Memo</span>
           </button>
           <button
             type="button"
             onClick={() => onSelectQuickPreset('clarity')}
-            className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
               activePresetId === 'clarity'
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-xs'
-                : `${theme.inkMuted} hover:text-white hover:bg-white/5`
+                ? 'bg-cyan-500/15 text-cyan-800 dark:text-cyan-400 border border-cyan-500/40 shadow-xs'
+                : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
             }`}
           >
-            <span>💎 Crystal Clarity</span>
+            <Sparkles className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>Crystal Clarity</span>
           </button>
           <button
             type="button"
             onClick={() => onSelectQuickPreset('phd_authority')}
-            className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
               activePresetId === 'phd_authority'
-                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 shadow-xs'
-                : `${theme.inkMuted} hover:text-white hover:bg-white/5`
+                ? 'bg-purple-500/15 text-purple-800 dark:text-purple-400 border border-purple-500/40 shadow-xs'
+                : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
             }`}
           >
-            <span>🎓 Academic Peer-Review</span>
+            <GraduationCap className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>Academic Peer-Review</span>
           </button>
           <button
             type="button"
             onClick={() => onSelectQuickPreset('gonzo')}
-            className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold text-xs transition-all whitespace-nowrap cursor-pointer ${
               activePresetId === 'gonzo'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-xs'
-                : `${theme.inkMuted} hover:text-white hover:bg-white/5`
+                ? 'bg-amber-500/15 text-amber-800 dark:text-amber-400 border border-amber-500/40 shadow-xs'
+                : `${theme.inkMuted} ${theme.inkHover} ${theme.surfaceHover}`
             }`}
           >
-            <span>🔥 Kinetic Gonzo</span>
+            <Zap className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span>Kinetic Gonzo</span>
           </button>
         </div>
       ) : null}
@@ -326,9 +350,9 @@ export default function IngestionPane({
           }}
           maxLength={MAX_INPUT_CHARS}
           placeholder="Paste or write your source manuscript here, or drop a .txt, .md, or .docx file below to begin transformation..."
-          className={`w-full flex-1 min-h-[340px] lg:min-h-[440px] resize-none bg-transparent px-5 py-4 text-[15px] leading-[1.7] focus:outline-none placeholder:text-zinc-600 ${
-            theme.ink
-          }`}
+          className={`w-full flex-1 min-h-[340px] lg:min-h-[440px] resize-none bg-transparent px-5 py-4 text-[15px] leading-[1.7] focus:outline-none ${
+            theme.isDark ? 'placeholder:text-slate-500' : 'placeholder:text-[#948A7D]'
+          } ${theme.ink}`}
         />
       </div>
 
@@ -336,9 +360,9 @@ export default function IngestionPane({
       {fileError ? (
         <div
           role="alert"
-          className="mx-5 mb-3 flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-300"
+          className={`mx-5 mb-3 flex items-start gap-2.5 rounded-xl border px-4 py-3 text-xs ${theme.errorSurface}`}
         >
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" aria-hidden="true" />
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           <span>{fileError}</span>
         </div>
       ) : null}
@@ -346,9 +370,9 @@ export default function IngestionPane({
       {truncationNotice ? (
         <div
           role="status"
-          className="mx-5 mb-3 flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-300"
+          className={`mx-5 mb-3 flex items-start gap-2.5 rounded-xl border px-4 py-3 text-xs ${theme.warningSurface}`}
         >
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400 mt-0.5" aria-hidden="true" />
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           <span>{truncationNotice}</span>
         </div>
       ) : null}
@@ -377,16 +401,20 @@ export default function IngestionPane({
           aria-disabled={isParsingFile}
           aria-busy={isParsingFile}
           aria-label="Upload a .txt, .md, or .docx file up to 5 MB"
-          className={`flex items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3 text-left transition-all duration-150 ${
+          className={`flex items-center justify-between gap-3 rounded-xl border border-dashed px-4 py-3 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 ${
+            theme.accentRing
+          } ${
             isParsingFile
-              ? 'border-white/10 bg-white/5 cursor-wait opacity-75'
+              ? `${theme.disabledButton} cursor-wait opacity-75`
               : isDragging
-              ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_20px_rgba(0,210,255,0.2)] cursor-pointer'
-              : 'border-white/15 bg-black/20 hover:border-cyan-400/50 hover:bg-black/30 cursor-pointer'
+              ? `${theme.dropzoneActive} cursor-pointer`
+              : `${theme.dropzoneIdle} cursor-pointer`
           }`}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15 border border-cyan-500/30 text-cyan-400">
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${theme.accentBadge}`}
+            >
               <Upload className="h-4 w-4" aria-hidden="true" />
             </div>
             <div className="min-w-0">
@@ -418,7 +446,7 @@ export default function IngestionPane({
             disabled
             aria-disabled="true"
             title="Coming soon"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-500 cursor-not-allowed whitespace-nowrap shrink-0"
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium whitespace-nowrap shrink-0 ${theme.disabledButton}`}
           >
             <HardDrive className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Google Drive</span>
@@ -427,9 +455,9 @@ export default function IngestionPane({
           <div
             className={`font-mono tabular-nums flex items-center gap-2 text-xs ${
               isAtLimit
-                ? 'text-rose-400 font-bold'
+                ? 'text-rose-600 dark:text-rose-400 font-bold'
                 : isNearLimit
-                ? 'text-amber-400 font-medium'
+                ? 'text-amber-600 dark:text-amber-400 font-medium'
                 : theme.inkSubtle
             }`}
           >

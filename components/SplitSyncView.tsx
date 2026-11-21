@@ -26,26 +26,35 @@ export default function SplitSyncView({
     [transformedText]
   );
 
-  const maxCount = Math.max(sourceParagraphs.length, transformedParagraphs.length);
+  const maxCount = Math.max(
+    sourceParagraphs.length,
+    transformedParagraphs.length
+  );
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between text-xs text-zinc-400 pb-1 border-b border-white/10">
-        <span className="font-semibold text-cyan-400">
-          Synchronized Split View ({maxCount} structural sections)
+      <div
+        className={`flex flex-wrap items-center justify-between gap-2 text-xs pb-2 border-b ${theme.border} ${theme.inkMuted}`}
+      >
+        <span className={`font-semibold ${theme.accentFg}`}>
+          Synchronized Split View ({maxCount} structural{' '}
+          {maxCount === 1 ? 'section' : 'sections'})
         </span>
-        <span className="text-[11px] text-zinc-500">
-          Hover or click any paragraph to inspect matched alignment
+        <span className={`text-[11px] ${theme.inkSubtle}`}>
+          Hover or select any paragraph to inspect matched alignment
         </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Source Column */}
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between text-xs font-semibold px-2 text-zinc-400">
+          <div
+            className={`flex items-center justify-between text-xs font-semibold px-2 ${theme.inkMuted}`}
+          >
             <span>Original Source</span>
-            <span className="font-mono text-[11px] text-zinc-500">
-              {sourceParagraphs.length} paragraphs
+            <span className={`font-mono text-[11px] ${theme.inkSubtle}`}>
+              {sourceParagraphs.length}{' '}
+              {sourceParagraphs.length === 1 ? 'paragraph' : 'paragraphs'}
             </span>
           </div>
 
@@ -53,28 +62,36 @@ export default function SplitSyncView({
             {sourceParagraphs.map((para, idx) => {
               const isLinked = activeParagraph === idx;
               return (
-                <div
+                <button
                   key={`src-${idx}`}
+                  type="button"
+                  aria-pressed={isLinked}
                   onClick={() => setActiveParagraph(isLinked ? null : idx)}
                   onMouseEnter={() => setActiveParagraph(idx)}
-                  className={`rounded-xl border p-3.5 transition-all duration-150 cursor-pointer ${
+                  className={`w-full text-left rounded-xl border p-3.5 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 ${
+                    theme.accentRing
+                  } ${
                     isLinked
-                      ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,210,255,0.15)] ring-1 ring-cyan-400'
-                      : `${theme.tray} ${theme.border} hover:border-white/20`
+                      ? theme.linkedCard
+                      : `${theme.tray} ${theme.border} ${theme.borderHover}`
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-white/5 text-[11px] font-mono text-zinc-400">
-                    <span className="font-bold text-cyan-400">
+                  <div
+                    className={`flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b text-[11px] font-mono ${theme.border} ${theme.inkMuted}`}
+                  >
+                    <span className={`font-bold ${theme.accentFg}`}>
                       § {(idx + 1).toString().padStart(2, '0')}
                     </span>
                     <span>
-                      {para.trim().split(/\s+/).length} words
+                      {para.trim().split(/\s+/).filter(Boolean).length} words
                     </span>
                   </div>
-                  <p className={`text-sm leading-relaxed ${theme.ink}`}>
+                  <p
+                    className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${theme.ink}`}
+                  >
                     {para}
                   </p>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -82,10 +99,13 @@ export default function SplitSyncView({
 
         {/* Transformed Column */}
         <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between text-xs font-semibold px-2 text-zinc-400">
+          <div
+            className={`flex items-center justify-between text-xs font-semibold px-2 ${theme.inkMuted}`}
+          >
             <span>Transformed Output</span>
-            <span className="font-mono text-[11px] text-zinc-500">
-              {transformedParagraphs.length} paragraphs
+            <span className={`font-mono text-[11px] ${theme.inkSubtle}`}>
+              {transformedParagraphs.length}{' '}
+              {transformedParagraphs.length === 1 ? 'paragraph' : 'paragraphs'}
             </span>
           </div>
 
@@ -93,28 +113,36 @@ export default function SplitSyncView({
             {transformedParagraphs.map((para, idx) => {
               const isLinked = activeParagraph === idx;
               return (
-                <div
+                <button
                   key={`tx-${idx}`}
+                  type="button"
+                  aria-pressed={isLinked}
                   onClick={() => setActiveParagraph(isLinked ? null : idx)}
                   onMouseEnter={() => setActiveParagraph(idx)}
-                  className={`rounded-xl border p-3.5 transition-all duration-150 cursor-pointer ${
+                  className={`w-full text-left rounded-xl border p-3.5 transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 ${
+                    theme.accentRing
+                  } ${
                     isLinked
-                      ? 'border-cyan-400 bg-cyan-500/10 shadow-[0_0_15px_rgba(0,210,255,0.15)] ring-1 ring-cyan-400'
-                      : `${theme.tray} ${theme.border} hover:border-white/20`
+                      ? theme.linkedCard
+                      : `${theme.tray} ${theme.border} ${theme.borderHover}`
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b border-white/5 text-[11px] font-mono text-zinc-400">
-                    <span className="font-bold text-cyan-400">
+                  <div
+                    className={`flex items-center justify-between gap-2 pb-1.5 mb-1.5 border-b text-[11px] font-mono ${theme.border} ${theme.inkMuted}`}
+                  >
+                    <span className={`font-bold ${theme.accentFg}`}>
                       § {(idx + 1).toString().padStart(2, '0')}
                     </span>
                     <span>
-                      {para.trim().split(/\s+/).length} words
+                      {para.trim().split(/\s+/).filter(Boolean).length} words
                     </span>
                   </div>
-                  <p className={`text-sm leading-relaxed ${theme.ink}`}>
+                  <p
+                    className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${theme.ink}`}
+                  >
                     {para}
                   </p>
-                </div>
+                </button>
               );
             })}
           </div>

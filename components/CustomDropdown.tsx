@@ -39,7 +39,11 @@ export default function CustomDropdown<T extends string>({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const selectedOption = options.find((opt) => opt.value === value) ?? options[0];
+  const selectedIndex = Math.max(
+    0,
+    options.findIndex((opt) => opt.value === value)
+  );
+  const selectedOption = options[selectedIndex];
 
   // Click outside to close
   useEffect(() => {
@@ -56,13 +60,25 @@ export default function CustomDropdown<T extends string>({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
+  const toggleOpen = () => {
+    setIsOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setHighlightedIndex(selectedIndex);
+      }
+      return next;
+    });
+  };
+
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (options.length === 0) return;
+
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (!isOpen) {
         setIsOpen(true);
-        setHighlightedIndex(options.findIndex((o) => o.value === value));
+        setHighlightedIndex(selectedIndex);
       } else {
         setHighlightedIndex((prev) => (prev + 1) % options.length);
       }
@@ -70,9 +86,11 @@ export default function CustomDropdown<T extends string>({
       e.preventDefault();
       if (!isOpen) {
         setIsOpen(true);
-        setHighlightedIndex(options.findIndex((o) => o.value === value));
+        setHighlightedIndex(selectedIndex);
       } else {
-        setHighlightedIndex((prev) => (prev <= 0 ? options.length - 1 : prev - 1));
+        setHighlightedIndex((prev) =>
+          prev <= 0 ? options.length - 1 : prev - 1
+        );
       }
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -80,18 +98,25 @@ export default function CustomDropdown<T extends string>({
         onChange(options[highlightedIndex].value);
         setIsOpen(false);
       } else {
-        setIsOpen((prev) => !prev);
+        toggleOpen();
       }
     } else if (e.key === 'Escape') {
       if (isOpen) {
         e.preventDefault();
+        e.stopPropagation();
         setIsOpen(false);
         triggerRef.current?.focus();
       }
     }
   };
 
+  if (!selectedOption) return null;
+
   const SelectedIcon = selectedOption.icon;
+  const activeDescendantId =
+    isOpen && highlightedIndex >= 0 && highlightedIndex < options.length
+      ? `${id}-option-${options[highlightedIndex].value}`
+      : undefined;
 
   return (
     <div ref={containerRef} className="relative flex flex-col gap-1.5">
@@ -112,27 +137,29 @@ export default function CustomDropdown<T extends string>({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-controls={`${id}-menu`}
+        aria-activedescendant={activeDescendantId}
         aria-labelledby={`${id}-label ${id}-trigger`}
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggleOpen}
         onKeyDown={handleKeyDown}
-        className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-150 cursor-pointer ${
-          theme.tray
-        } ${theme.border} ${theme.borderHover} ${
-          isOpen ? 'ring-2 ring-[#00D2FF]/40 border-[#00D2FF]/60' : ''
+        className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 ${
+          theme.accentRing
+        } ${theme.tray} ${theme.border} ${theme.borderHover} ${
+          isOpen ? theme.openBorderRing : ''
         }`}
       >
         <div className="flex items-center gap-3 min-w-0">
           {SelectedIcon ? (
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border shadow-xs ${
-                selectedOption.themeGlow ??
-                'bg-white/5 border-white/10 text-cyan-400'
+                selectedOption.themeGlow ?? theme.accentBadge
               }`}
             >
               <SelectedIcon className="h-4 w-4" aria-hidden="true" />
             </div>
           ) : leadingIcon ? (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-cyan-400">
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${theme.accentBadge}`}
+            >
               {leadingIcon}
             </div>
           ) : null}
@@ -151,8 +178,8 @@ export default function CustomDropdown<T extends string>({
 
         <ChevronDown
           className={`h-4 w-4 shrink-0 transition-transform duration-200 ${
-            theme.inkSubtle
-          } ${isOpen ? 'rotate-180 text-cyan-400' : ''}`}
+            isOpen ? `rotate-180 ${theme.accentFg}` : theme.inkSubtle
+          }`}
           aria-hidden="true"
         />
       </button>
@@ -180,6 +207,7 @@ export default function CustomDropdown<T extends string>({
               return (
                 <div
                   key={option.value}
+                  id={`${id}-option-${option.value}`}
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => {
@@ -192,19 +220,18 @@ export default function CustomDropdown<T extends string>({
                     isSelected
                       ? theme.isDark
                         ? 'bg-[#192336] text-white'
-                        : 'bg-[#F2ECE1] text-[#1A1715]'
+                        : 'bg-[#EFE7D8] text-[#1A1715]'
                       : isHighlighted
                       ? theme.isDark
                         ? 'bg-[#151D2C]'
-                        : 'bg-[#F7F3EB]'
-                      : 'hover:bg-black/5 dark:hover:bg-white/5'
+                        : 'bg-[#F5EFE3]'
+                      : theme.surfaceHover
                   }`}
                 >
                   {OptionIcon ? (
                     <div
                       className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border text-xs ${
-                        option.themeGlow ??
-                        'bg-white/5 border-white/10 text-cyan-400'
+                        option.themeGlow ?? theme.accentBadge
                       }`}
                     >
                       <OptionIcon className="h-3.5 w-3.5" aria-hidden="true" />
@@ -214,22 +241,24 @@ export default function CustomDropdown<T extends string>({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
                       <span
-                        className={`text-xs font-semibold ${
-                          isSelected ? 'text-cyan-400 font-bold' : theme.ink
+                        className={`text-xs ${
+                          isSelected
+                            ? `${theme.accentFg} font-bold`
+                            : `${theme.ink} font-semibold`
                         }`}
                       >
                         {option.label}
                       </span>
                       {isSelected ? (
                         <Check
-                          className="h-3.5 w-3.5 shrink-0 text-cyan-400"
+                          className={`h-3.5 w-3.5 shrink-0 ${theme.accentFg}`}
                           aria-hidden="true"
                         />
                       ) : null}
                     </div>
 
                     {option.tagline ? (
-                      <p className={`text-[10.5px] font-medium text-cyan-500/90`}>
+                      <p className={`text-[10.5px] font-medium ${theme.accentFg} opacity-90`}>
                         {option.tagline}
                       </p>
                     ) : null}
